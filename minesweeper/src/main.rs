@@ -2,6 +2,7 @@ extern crate rand;
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::fmt;
+use std::iter;
 
 struct Square {
     x: usize,
@@ -29,11 +30,35 @@ struct Board {
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut result = Ok(());
+        let maxwidth = if self.width > 1 {((self.width - 1) as f32).log10() as usize + 1} else {2};
+        let row_label_size = if self.height > 1 {((self.height - 1) as f32).log10() as usize + 1} else {2};
+        let header_prefix: String = iter::repeat(" ").take(row_label_size + 2).collect();
+        let mut result = write!(f, "{}", header_prefix);
+
+        for col in 0..self.width {
+            let width = if col == 0 {0} else {(col as f32).log10() as usize};
+            let prefix: String = iter::repeat(" ").take(maxwidth - width).collect();
+            let s = format!("{}{}", prefix, col);
+            result = write!(f, "{}", s);
+        }
+
+        result = writeln!(f, "");
+        result = writeln!(f, "");
+        let prefix: String = iter::repeat(" ").take(maxwidth).collect();
         for row in 0..self.height {
-            let start = row * self.width as usize;
-            let end = start + self.width as usize;
-            result = writeln!(f, "{:?}", &self.squares[start..end])
+            let row_size = if row == 0 {0} else {(row as f32).log10() as usize};
+            let row_prefix: String = iter::repeat(" ").take(row_label_size - row_size).collect();
+            result = write!(f, "{}{} ", row_prefix, row);
+            for col in 0..self.width {
+                let index = row * self.width + col as usize;
+                let s = match self.squares[index] {
+                    Square {visible: false, ..} => format!("*"),
+                    Square {bomb: true, ..} => format!("X"),
+                    Square {value: v, ..} => format!("{}", v),
+                };
+                write!(f, "{}{}", prefix, s);
+            }
+            result = writeln!(f, "");
         }
         result
     }
@@ -136,7 +161,7 @@ impl Board {
 }
 
 fn main() {
-    let mut board = Board {width: 8, height: 8, squares: vec!{}};
+    let mut board = Board {width: 12, height: 12, squares: vec!{}};
     board.init();
     board.new_game(0.2);
     let vals = board.starting_values();

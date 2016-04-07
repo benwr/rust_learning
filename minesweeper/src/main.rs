@@ -1,8 +1,10 @@
 extern crate rand;
 use rand::{thread_rng, Rng};
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::fmt;
 use std::iter;
+use std::io;
+use std::io::prelude::*;
 
 struct Square {
     x: usize,
@@ -26,6 +28,7 @@ struct Board {
     width: usize,
     height: usize,
     squares: Vec<Square>,
+    complete: bool,
 }
 
 impl fmt::Display for Board {
@@ -97,6 +100,31 @@ impl Board {
     fn size(&self) -> usize {
         self.width * self.height
     }
+
+    fn index_neighbors(&self, index: usize) -> Vec<usize> {
+        let (x, y) = Board::coords_from_index(self.width, index);
+        let neighbor_diffs = vec![(-1, -1), (0, -1), (1, -1),
+                                  (-1, 0), (1, 0),
+                                  (-1, 1), (0, 1), (1, 1)];
+        let mut result = vec![];
+        for (dx, dy) in neighbor_diffs {
+            let bomb = match Board::index_from_coords(
+                self.width,
+                self.height,
+                x as isize + dx,
+                y as isize + dy)
+            {
+                Option::Some(i) => {
+                    match self.squares.get(i) {
+                        Option::Some(neighbor) => result.push(i),
+                        Option::None => (),
+                    }
+                },
+                Option::None => (),
+            };
+        }
+        result
+    }
     
     fn new_game(&mut self, difficulty: f64) {
         let mut bomb_indices = HashSet::new();
@@ -157,17 +185,111 @@ impl Board {
         }
         values
     }
+
+    fn make_move(& mut self, x: isize, y: isize) {
+        let index = match Board::index_from_coords(self.width, self.height, x, y) {
+            Some(i) => i,
+            None => panic!("No! Not a real index!"),
+        };
+        self.squares[index].visible = true;
+
+        let mut frontier = VecDeque::new();
+        let mut explored = HashSet::new();
+        frontier.push_back(index);
+        explored.insert(index);
+        while !frontier.is_empty() {
+            let current_index = match frontier.pop_front() {
+                Some(x) => x,
+                None => break,
+            };
+            for considering in self.index_neighbors(current_index) {
+                if !self.squares[considering].bomb {
+                    self.squares[considering].visible = true;
+                }
+                if self.squares[considering].value == 0 && !explored.contains(&considering) {
+                    frontier.push_back(considering);
+                    explored.insert(considering);
+                }
+            }
+        }
+    }
+
+    fn is_complete(&self) -> bool {
+        for s in self.squares.iter() {
+            if s.visible && s.bomb {
+                return true;
+            } else if !s.visible && !s.bomb {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn is_won(&self) -> bool {
+        if !self.is_complete() {
+            return false;
+        } 
+        for s in self.squares.iter() {
+            if s.visible && s.bomb {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn set_visible(&mut self) {
+        for mut s in self.squares.iter_mut() {
+            s.visible = true;
+        }
+    }
 }
 
 fn main() {
-    let mut board = Board {width: 12, height: 12, squares: vec!{}};
+    let mut board = Board {width: 12, height: 12, squares: vec!{}, complete: false};
     board.init();
-    board.new_game(0.2);
+    board.new_game(0.01);
     let vals = board.starting_values();
     let mut i = 0;
     for val in vals {
         board.squares[i].value = val;
-        i += 1
+        i += 1;
     }
-    print!("{}", board);
+    let instream = io::stdin();
+
+    while !board.is_complete() {
+        let mut row_str = String::new();
+        let mut col_str = String::new();
+
+        print!("{}", board);
+        println!("");
+        print!("Row number: ");
+        io::stdout().flush().ok().expect("Failed to flush stdout");
+        instream.read_line(&mut row_str).expect("Failed to read line");
+        let y: isize = match row_str.trim().parse() {
+            Ok(num) => num,
+            Err(_) => {
+                println!("Invalid index: {}", row_str);
+                continue
+            },
+        };
+        print!("Column number: ");
+        io::stdout().flush().ok().expect("Failed to flush stdout");
+        instream.read_line(&mut col_str).expect("Failed to read line");
+        let x: isize = match col_str.trim().parse() {
+            Ok(num) => num,
+            Err(_) => {
+                println!("Invalid index: {}", col_str);
+                continue
+            },
+        };
+        println!("");
+        board.make_move(x, y);
+    }
+    if board.is_won() {
+        board.set_visible();
+        println!("You win!!");
+    } else {
+        println!("You lose :(");
+    }
+    println!("{}", board);
 }

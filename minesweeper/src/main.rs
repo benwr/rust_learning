@@ -14,25 +14,16 @@ struct Square {
     value: u32,
 }
 
-impl fmt::Debug for Square {
-    fn fmt(&self, f:&mut fmt::Formatter) -> fmt::Result {
-        if self.bomb {
-            write!(f, "X")
-        } else {
-            write!(f, "{}", self.value)
-        }
-    }
-}
-
 struct Board {
     width: usize,
     height: usize,
     squares: Vec<Square>,
-    complete: bool,
 }
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // This is gross and involves lots of magic numbers, but it should
+        // always give a nicely-formatted board with spaces between column headers
         let maxwidth = if self.width > 1 {((self.width - 1) as f32).log10() as usize + 1} else {2};
         let row_label_size = if self.height > 1 {((self.height - 1) as f32).log10() as usize + 1} else {2};
         let header_prefix: String = iter::repeat(" ").take(row_label_size + 2).collect();
@@ -108,7 +99,7 @@ impl Board {
                                   (-1, 1), (0, 1), (1, 1)];
         let mut result = vec![];
         for (dx, dy) in neighbor_diffs {
-            let bomb = match Board::index_from_coords(
+            match Board::index_from_coords(
                 self.width,
                 self.height,
                 x as isize + dx,
@@ -116,7 +107,7 @@ impl Board {
             {
                 Option::Some(i) => {
                     match self.squares.get(i) {
-                        Option::Some(neighbor) => result.push(i),
+                        Option::Some(_) => result.push(i),
                         Option::None => (),
                     }
                 },
@@ -159,25 +150,11 @@ impl Board {
                 Option::Some(_) => {
                     let (x, y) = Board::coords_from_index(self.width, index);
                     let mut acc = 0;
-                    let neighbor_diffs = vec![(-1, -1), (-1, 0), (-1, 1),
-                                              (0, -1), (0, 1),
-                                              (1, -1), (1, 0), (1, 1)];
-                    for (dx, dy) in neighbor_diffs {
-                        let bomb = match Board::index_from_coords(
-                            self.width,
-                            self.height,
-                            x as isize + dx,
-                            y as isize + dy)
-                        {
-                            Option::Some(i) => {
-                                match self.squares.get(i) {
-                                    Option::Some(neighbor) => neighbor.bomb,
-                                    Option::None => false,
-                                }
-                            },
-                            Option::None => false,
-                        };
-                        acc += if bomb {1} else {0};
+                    for neighbor in self.index_neighbors(index) {
+                        acc += match self.squares.get(neighbor) {
+                            Option::Some(s) => s.bomb as u32,
+                            Option::None => 0,
+                        }
                     }
                     values.append(&mut vec![acc]);
                 }
@@ -203,12 +180,14 @@ impl Board {
                 None => break,
             };
             for considering in self.index_neighbors(current_index) {
-                if !self.squares[considering].bomb && !self.squares[current_index].bomb && self.squares[current_index].value == 0 {
+                if !self.squares[current_index].bomb &&
+                    self.squares[current_index].value == 0
+                {
                     self.squares[considering].visible = true;
-                }
-                if self.squares[considering].value == 0 && !explored.contains(&considering) {
-                    frontier.push_back(considering);
-                    explored.insert(considering);
+                    if self.squares[considering].value == 0 && !explored.contains(&considering) {
+                        frontier.push_back(considering);
+                        explored.insert(considering);
+                    }
                 }
             }
         }
@@ -245,7 +224,7 @@ impl Board {
 }
 
 fn main() {
-    let mut board = Board {width: 12, height: 12, squares: vec!{}, complete: false};
+    let mut board = Board {width: 12, height: 12, squares: vec!{}};
     board.init();
     board.new_game(0.10);
     let vals = board.starting_values();

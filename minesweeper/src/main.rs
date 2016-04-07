@@ -33,22 +33,21 @@ impl fmt::Display for Board {
         let maxwidth = if self.width > 1 {((self.width - 1) as f32).log10() as usize + 1} else {2};
         let row_label_size = if self.height > 1 {((self.height - 1) as f32).log10() as usize + 1} else {2};
         let header_prefix: String = iter::repeat(" ").take(row_label_size + 2).collect();
-        let mut result = write!(f, "{}", header_prefix);
+        try!(write!(f, "{}", header_prefix));
 
         for col in 0..self.width {
             let width = if col == 0 {0} else {(col as f32).log10() as usize};
             let prefix: String = iter::repeat(" ").take(maxwidth - width).collect();
             let s = format!("{}{}", prefix, col);
-            result = write!(f, "{}", s);
+            try!(write!(f, "{}", s));
         }
 
-        result = writeln!(f, "");
-        result = writeln!(f, "");
+        let mut result = writeln!(f, "\n");
         let prefix: String = iter::repeat(" ").take(maxwidth).collect();
         for row in 0..self.height {
             let row_size = if row == 0 {0} else {(row as f32).log10() as usize};
             let row_prefix: String = iter::repeat(" ").take(row_label_size - row_size).collect();
-            result = write!(f, "{}{} ", row_prefix, row);
+            try!(write!(f, "{}{} ", row_prefix, row));
             for col in 0..self.width {
                 let index = row * self.width + col as usize;
                 let s = match self.squares[index] {
@@ -56,7 +55,7 @@ impl fmt::Display for Board {
                     Square {bomb: true, ..} => format!("X"),
                     Square {value: v, ..} => format!("{}", v),
                 };
-                write!(f, "{}{}", prefix, s);
+                try!(write!(f, "{}{}", prefix, s));
             }
             result = writeln!(f, "");
         }

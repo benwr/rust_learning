@@ -203,7 +203,7 @@ impl Board {
                 None => break,
             };
             for considering in self.index_neighbors(current_index) {
-                if !self.squares[considering].bomb {
+                if !self.squares[considering].bomb && !self.squares[current_index].bomb && self.squares[current_index].value == 0 {
                     self.squares[considering].visible = true;
                 }
                 if self.squares[considering].value == 0 && !explored.contains(&considering) {
@@ -247,7 +247,7 @@ impl Board {
 fn main() {
     let mut board = Board {width: 12, height: 12, squares: vec!{}, complete: false};
     board.init();
-    board.new_game(0.01);
+    board.new_game(0.10);
     let vals = board.starting_values();
     let mut i = 0;
     for val in vals {

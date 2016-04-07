@@ -1,0 +1,7 @@
+[package]
+name = "minesweeper"
+version = "0.1.0"
+authors = ["Ben Weinstein-Raun <b@w-r.me>"]
+
+[dependencies]
+rand = "0.3.0"

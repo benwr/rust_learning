@@ -1,0 +1,6 @@
+[package]
+name = "simple_udp"
+version = "0.1.0"
+authors = ["Ben Weinstein-Raun <b@w-r.me>"]
+
+[dependencies]

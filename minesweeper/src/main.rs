@@ -116,11 +116,11 @@ impl Board {
         }
         result
     }
-    
+
     fn new_game(&mut self, difficulty: f64) {
         let mut bomb_indices = HashSet::new();
         let mut rng = thread_rng();
-        
+
         while (bomb_indices.len() as f64) < (self.size() as f64) * difficulty {
             bomb_indices.insert(rng.gen_range(0, self.size()));
         }
@@ -207,7 +207,7 @@ impl Board {
     fn is_won(&self) -> bool {
         if !self.is_complete() {
             return false;
-        } 
+        }
         for s in self.squares.iter() {
             if s.visible && s.bomb {
                 return false;
